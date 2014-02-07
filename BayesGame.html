@@ -32,18 +32,36 @@ Maybe the "right triangle" version of the game, where I don't tell them, but let
 Different choices for F could be different levels (i.e. explain the context is different), so they can learn different biases for the different contexts.
 
 -->
+<style type="text/css">
+.hot {color:#F0F}
+::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 7px;
+}
+::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: rgba(0,0,0,.5);
+    -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
+}
+
+</style>
 <div id="controls">
 <form id="controls_form">
+Current score: <span id="score"></span> after <span id="plays"></span> plays.<br>
+<br>
+<div id="log" style="width:621px;height:100px;overflow-y:scroll">
+</div>
+Bet on the outcome using the slider to control the payouts.<br>
 <!--I'm guessing slider radius is 10px and trying to account for how this affects the actual pixel coords. of the slider; something's slightly off below.-->
 <input type="range" id="slider1" min="0" max="600" style="width:621; margin:0px;"> <!-- make wider than max by 2*sliderradius+1 -->
-<input type="submit"><br>
+<input type="submit" value="Bet"><br>
 <div style="margin-left:10px;margin-right:10px"> <!-- pad on left and right by slider radius -->
 <canvas id="pbar" width="601" height="40"></canvas><!--width=max+1 so pixels run 0..max -->
 </div><br> 
-<span id="payoff0"></span>
-<span id="payoff1"></span>
-<span id="a"></span>
 </form>
+<span style="padding-right:350px">Payout on <span class="hot"><span name="tails"></span>: <span id="payoff0"></span></span></span>
+Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></span></span><br>
+(These payouts maximize your expected return if you think <span class="hot">p=<span id="a"></span></span> is the probability of <span name="heads"></span>.)<br>
 </div>
 <script>
 BG={uscale:6, pbarmax:600};
@@ -69,34 +87,99 @@ BG.do_refresh=function() {
   var s=$("#slider1")[0];
   var u=(2*s.value/(BG.pbarmax)-1)*BG.uscale;
   var a=1/(1+Math.exp(-u));
+  BG.a=a;
   var par1=1/Math.log(2);
   var par0=1.0;
   var payoff0=par0+par1*Math.log(1-a);
   var payoff1=par0+par1*Math.log(a);
+  BG.payoff=[payoff0, payoff1];
   $("#payoff0").html(payoff0.toFixed(3));
   $("#payoff1").html(payoff1.toFixed(3));
   $("#a").html(a.toFixed(3));
+  $("[name='heads']").html(BG.labels[1]);
+  $("[name='tails']").html(BG.labels[0]);
+  $("#score").html(BG.score.toFixed(3));
+  $("#plays").html(BG.plays);
   BG.pbar.fillStyle="#F0F";
   BG.pbar.fillRect(s.value,0,1,10);
   BG.pbar.fillStyle="#000";
 }
 
 BG.setup=function() {
+  $("#slider1").change(function(e){BG.do_refresh();})
   $("#controls_form").submit(function( event ) {
-    alert( "Handler for .submit() called." );
+    BG.handle_submit(event);
     event.preventDefault();
     });
-  $("#pbar").mousemove(BG.pbar_mouse);
-  $("#pbar").mousedown(BG.pbar_mouse);
+  // buggy. Weirdness on Firefox.
+  //$("#pbar").mousemove(BG.pbar_mouse);
+  //$("#pbar").mousedown(BG.pbar_mouse);
 }
 
 BG.pbar_mouse=function(e){
   if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
 }
 
+BG.describeCoin=function(p) {
+  var coindesc;
+  if (p===0.5) coindesc="fair coin";
+  else coindesc="p="+p.toFixed(2)+" coin";
+  return(coindesc);
+}
 
-$("#slider1").change(function(e){BG.do_refresh();})
+BG.CoinProcess=function(pheads) {
+  this.pheads=pheads;
+}
+BG.CoinProcess.prototype.title=function(){return("Predict a "+BG.describeCoin(this.pheads))};
+BG.CoinProcess.prototype.labels=function(){return(["Tails","Heads"])};
+BG.CoinProcess.prototype.initialize=function(){return({html:"",state:{}})};
+BG.CoinProcess.prototype.draw=function(state){
+  var coindesc=BG.describeCoin(this.pheads);
+  result={html: "I'm about to flip a "+coindesc+". Will I get heads?", state:state};
+  result.outcome=(Math.random()<=this.pheads)+0;
+  return(result);
+};
+
+BG.games=[new BG.CoinProcess(0.5),new BG.CoinProcess(0.9)];
+BG.start_game=function(game) {
+  BG.score=0;
+  BG.plays=0;
+  BG.game=game;
+  BG.title=game.title();
+  BG.labels=game.labels();
+
+  var init=BG.game.initialize();
+  BG.game_state=init.state;
+  BG.logEvent(init.html);
+  BG.draw=BG.game.draw(BG.game_state);
+  BG.game_state=BG.draw.state;
+  BG.logEvent(BG.draw.html);
+
+  BG.do_refresh();
+};
+
+BG.handle_submit=function(event) {
+  var payoff=BG.payoff[BG.draw.outcome];
+  var msg1="You bet with p="+BG.a.toFixed(3)+" and the outcome was "+BG.labels[BG.draw.outcome]+".";
+  var msg2;
+  if (payoff>=0) msg2="You gained "+payoff.toFixed(3)+" points."
+  else           msg2="You lost "+(-payoff).toFixed(3)+" points."
+  BG.score+=payoff;
+  BG.plays+=1;
+  BG.logEvent("<span style='color:#55F'>"+msg1+" "+msg2+"</span>")
+  BG.draw=BG.game.draw(BG.game_state);
+  BG.game_state=BG.draw.state;
+  BG.logEvent(BG.draw.html);
+  BG.do_refresh();
+}
+
+BG.logEvent=function(h) {
+ $("#log").append(h+"<br>");
+}
+
+
 BG.setup();
-BG.do_refresh();
+BG.start_game(BG.games[1]);
+
 </script>
 </html>
