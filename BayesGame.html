@@ -48,7 +48,7 @@ Different choices for F could be different levels (i.e. explain the context is d
 </style>
 <div id="controls">
 <form id="controls_form">
-<div id="log" style="width:621px;height:200px;overflow-y:scroll;border:1px solid black;padding:2px;">
+<div id="log" style="width:621px;height:200px;overflow-y:scroll;border:1px solid black;padding:2px;resize:both;">
 </div>
 <br>
 <i>Bet on the outcome using the slider to control the payouts.</i><br>
@@ -171,6 +171,15 @@ BG.handle_submit=function(event) {
   BG.logEvent("<span style='color:#55F'>"+msg1+" "+msg2+"</span>")
   BG.draw=BG.game.draw(BG.game_state);
   BG.game_state=BG.draw.state;
+  var current_score={score: BG.score, plays: BG.plays, avgscore: BG.score/BG.plays};
+  if (BG.plays===1) { // create a game_scores object for this session
+    if (BG.game_scores[BG.title] === undefined) BG.game_scores[BG.title]=[];
+    BG.game_scores[BG.title]=BG.game_scores[BG.title].concat([current_score]);
+    }
+  else {
+    BG.game_scores[BG.title]=BG.game_scores[BG.title].slice(0,-1).concat([current_score]);
+    }
+  sessionStorage.setItem('game_scores',JSON.stringify(BG.game_scores));
   BG.logEvent(BG.draw.html);
   BG.do_refresh();
 }
@@ -182,6 +191,14 @@ BG.logEvent=function(h) {
 }
 
 BG.setup=function() {
+  var gs=sessionStorage.getItem('game_scores');
+  //sessionStorage.setItem('game_scores','{}') // use this if it gets corrupted
+  //JSON.stringify(BG.game_scores,undefined,2) // use this to see the status
+  if (gs === null) {
+    gs={};
+    sessionStorage.setItem('game_scores',JSON.stringify(gs))
+    } else gs=JSON.parse(gs);
+  BG.game_scores=gs;
   $("#slider1").change(function(e){BG.do_refresh();})
   $("#controls_form").submit(function( event ) {
     BG.handle_submit(event);
@@ -207,7 +224,6 @@ BG.setup=function() {
 BG.pbar_mouse=function(e){
   if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
 }
-
 
 BG.setup();
 BG.start_game(1);
