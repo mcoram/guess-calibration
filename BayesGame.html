@@ -156,9 +156,31 @@ BG.MaskedProcess.prototype.draw=function(state){
   var result={html:this.options.message, state:d1.state, outcome:d1.outcome};
   return(result);
 }
-  
-BG.plays=0; 
-BG.games=[new BG.CoinProcess(0.5),new BG.CoinProcess(0.9), new BG.MaskedProcess('Mystery Game 1',new BG.CoinProcess(0.621711006318219),{})];
+
+BG.SimpleMarkovProcess=function(transprob,depth,initial) {
+  this.transprob=transprob;
+  this.depth=depth;
+  this.initial=initial;
+  this.mytitle='Predict a Markov process with transitions: '+JSON.stringify(transprob)+" and inital: "+JSON.stringify(initial);
+  this.options={labels:["Down","Up"]};
+}
+BG.SimpleMarkovProcess.prototype.title=function(){return(this.mytitle);}
+BG.SimpleMarkovProcess.prototype.labels=function(){return(this.options.labels);}
+BG.SimpleMarkovProcess.prototype.initialize=function() {
+  return({html:"",state:this.initial});  
+  }
+BG.SimpleMarkovProcess.prototype.draw=function(state) {
+  var tp=this.transprob;
+  for (var i=0;i<this.depth;i++) {
+     tp=tp[state[i]];
+  }
+  // At this point tp should be a number in [0,1]
+  var outcome=(Math.random()<=tp)+0;
+  state=state.slice(1).concat([outcome]);
+  var result={html: "Will it be up this time?", state:state, outcome:outcome};
+  return(result);
+}
+
 BG.start_game=function(gameix) {
   if (BG.plays>0) {
     BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
@@ -172,7 +194,8 @@ BG.start_game=function(gameix) {
   BG.plays=0;
   BG.game=game;
   BG.title=game.title();
-  BG.logEvent("Starting game: <span class='hot'>"+BG.title+"</span>");
+  BG.logEvent("");
+  BG.logEvent("<span class='hot'>Starting game: "+BG.title+"</span>");
   BG.labels=game.labels();
 
   var init=BG.game.initialize();
@@ -250,6 +273,11 @@ BG.pbar_mouse=function(e){
   if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
 }
 
+BG.plays=0; 
+BG.games=[new BG.CoinProcess(0.5),
+          new BG.CoinProcess(0.9),
+          new BG.MaskedProcess('Mystery Game 1',new BG.CoinProcess(0.621711006318219),{}),
+          new BG.SimpleMarkovProcess([0.15,.6],1,[0])];
 BG.setup();
 BG.start_game(1);
 
