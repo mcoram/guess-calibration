@@ -127,13 +127,38 @@ BG.CoinProcess.prototype.labels=function(){return(["Tails","Heads"])};
 BG.CoinProcess.prototype.initialize=function(){return({html:"",state:{}})};
 BG.CoinProcess.prototype.draw=function(state){
   var coindesc=BG.describeCoin(this.pheads);
-  result={html: "I'm about to flip a "+coindesc+". Will I get heads?", state:state};
+  var result={html: "I'm about to flip a "+coindesc+". Will I get heads?", state:state};
   result.outcome=(Math.random()<=this.pheads)+0;
   return(result);
 };
 
+BG.duplicateObject=function(obj) { // for object literals; shallow copy
+  return($.extend(true,{},obj));
+}
+BG.extendObject=function(defaults,override) {
+  return($.extend(BG.duplicateObject(defaults),override));
+}
+BG.MaskedProcess=function(title,game,options) {
+  this.game=game;
+  this.mytitle=title;
+  var defaults={labels:["No","Yes"],initialmessage:"I'm a mysterious process.", message:"Will I say yes this time?"};
+  options=BG.extendObject(defaults,options);
+  this.options=options;
+}
+BG.MaskedProcess.prototype.title=function(){return(this.mytitle);}
+BG.MaskedProcess.prototype.labels=function(){return(this.options.labels);}
+BG.MaskedProcess.prototype.initialize=function(){
+  var i1=this.game.initialize();
+  return({html:this.options.initialmessage,state:i1.state});
+}
+BG.MaskedProcess.prototype.draw=function(state){
+  var d1=this.game.draw(state);
+  var result={html:this.options.message, state:d1.state, outcome:d1.outcome};
+  return(result);
+}
+  
 BG.plays=0; 
-BG.games=[new BG.CoinProcess(0.5),new BG.CoinProcess(0.9)];
+BG.games=[new BG.CoinProcess(0.5),new BG.CoinProcess(0.9), new BG.MaskedProcess('Mystery Game 1',new BG.CoinProcess(0.621711006318219),{})];
 BG.start_game=function(gameix) {
   if (BG.plays>0) {
     BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
