@@ -34,6 +34,7 @@ Different choices for F could be different levels (i.e. explain the context is d
 -->
 <style type="text/css">
 .hot {color:#F0F}
+.cool {color:#080}
 ::-webkit-scrollbar {
     -webkit-appearance: none;
     width: 7px;
@@ -47,12 +48,10 @@ Different choices for F could be different levels (i.e. explain the context is d
 </style>
 <div id="controls">
 <form id="controls_form">
-Current score: <span id="score"></span> after <span id="plays"></span> plays.<br>
-<br>
 <div id="log" style="width:621px;height:200px;overflow-y:scroll;border:1px solid black;padding:2px;">
 </div>
 <br>
-Bet on the outcome using the slider to control the payouts.<br>
+<i>Bet on the outcome using the slider to control the payouts.</i><br>
 <span style="padding-right:350px">Payout on <span class="hot"><span name="tails"></span>: <span id="payoff0"></span></span></span>
 Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></span></span><br>
 <!--I'm guessing slider radius is 10px and trying to account for how this affects the actual pixel coords. of the slider; something's slightly off below.-->
@@ -63,6 +62,11 @@ Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></spa
 </div><br> 
 </form>
 (These payouts maximize your expected return if you think <span class="hot">p=<span id="a"></span></span> is the probability of <span name="heads"></span>.)<br>
+<br>
+Current score: <span id="score" class="cool"></span> after <span id="plays" class="cool"></span> plays, for an average score per play of <span id="score_per_play" class="cool"></span>.<br>
+<br>
+<!--You're playing "<span id="game_title"></span>".-->
+Want to play a different game? <select id="game_selector"></select><br>
 </div>
 <script>
 BG={uscale:6, pbarmax:600};
@@ -101,24 +105,11 @@ BG.do_refresh=function() {
   $("[name='tails']").html(BG.labels[0]);
   $("#score").html(BG.score.toFixed(3));
   $("#plays").html(BG.plays);
+  $("#score_per_play").html((BG.score/BG.plays).toFixed(3));
+  $("#game_title").html(BG.title);
   BG.pbar.fillStyle="#F0F";
   BG.pbar.fillRect(s.value,0,1,10);
   BG.pbar.fillStyle="#000";
-}
-
-BG.setup=function() {
-  $("#slider1").change(function(e){BG.do_refresh();})
-  $("#controls_form").submit(function( event ) {
-    BG.handle_submit(event);
-    event.preventDefault();
-    });
-  // buggy. Weirdness on Firefox.
-  //$("#pbar").mousemove(BG.pbar_mouse);
-  //$("#pbar").mousedown(BG.pbar_mouse);
-}
-
-BG.pbar_mouse=function(e){
-  if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
 }
 
 BG.describeCoin=function(p) {
@@ -141,12 +132,22 @@ BG.CoinProcess.prototype.draw=function(state){
   return(result);
 };
 
+BG.plays=0; 
 BG.games=[new BG.CoinProcess(0.5),new BG.CoinProcess(0.9)];
-BG.start_game=function(game) {
+BG.start_game=function(gameix) {
+  if (BG.plays>0) {
+    BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
+       '</span> after <span class="cool">'+BG.plays+'</span> plays, for an average score per play of <span class="cool">'+
+       (BG.score/BG.plays).toFixed(3)+'</span>.');
+
+    }
+  var game=BG.games[gameix];
+  $("#game_selector")[0].value=gameix;
   BG.score=0;
   BG.plays=0;
   BG.game=game;
   BG.title=game.title();
+  BG.logEvent("Starting game: <span class='hot'>"+BG.title+"</span>");
   BG.labels=game.labels();
 
   var init=BG.game.initialize();
@@ -180,9 +181,36 @@ BG.logEvent=function(h) {
  l.scrollTop(l[0].scrollHeight);
 }
 
+BG.setup=function() {
+  $("#slider1").change(function(e){BG.do_refresh();})
+  $("#controls_form").submit(function( event ) {
+    BG.handle_submit(event);
+    event.preventDefault();
+    });
+  var selectopts="";
+  for (var gameix in BG.games) {
+    var game=BG.games[gameix];
+    var gt=game.title();
+    selectopts+="<option value='"+gameix+"'>"+gt+"</option>"
+    }
+  $("#game_selector").html(selectopts);
+  $("#game_selector").change(function(e){
+    //console.log(e);console.log(this);
+    var gameix=$("#game_selector")[0].value;
+    BG.start_game(gameix);
+    });
+  // buggy. Weirdness on Firefox.
+  //$("#pbar").mousemove(BG.pbar_mouse);
+  //$("#pbar").mousedown(BG.pbar_mouse);
+}
+
+BG.pbar_mouse=function(e){
+  if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
+}
+
 
 BG.setup();
-BG.start_game(BG.games[1]);
+BG.start_game(1);
 
 </script>
 </html>
