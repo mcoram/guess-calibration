@@ -221,6 +221,43 @@ BG.RandomCoinFromEnvelopeProcess.prototype.initialize=function(){
   return({html:"Ok. I've picked the coin."})
 }
 
+BG.MaskedRepeatedProcess=function(title,game,options) {
+  this.game=game;
+  this.title=title;
+  var defaults={
+      labels:["Tails","Heads"],
+      initialmessage:"I have an \"urn\" of coins, with possibly different probabilities.", 
+      restartmessage:"I'm picking a fresh coin from the urn.",
+      message:"I'm about to flip the coin. Will I get heads?",
+      trials_per_session:10};
+  options=BG.extendObject(defaults,options);
+  this.options=options;
+  this.labels=options.labels;
+  this.session=1;
+}
+BG.MaskedRepeatedProcess.prototype.initialize=function(){
+  var i1=this.game.initialize();
+  this.trial=1;
+  return({html:this.options.initialmessage+" "+this.options.restartmessage});
+}
+BG.MaskedRepeatedProcess.prototype.draw=function(){
+  var message="";
+  if (this.trial>this.options.trials_per_session) {
+    message+=this.options.restartmessage+" ";
+    var init=this.game.initialize();
+    this.session+=1;this.trial=1;
+    }
+  message+=this.options.message+" "+this.describeTrial();
+  var d1=this.game.draw();
+  var result={html:message, outcome:d1.outcome};
+  this.trial=this.trial+1;
+  return(result);
+}
+BG.MaskedRepeatedProcess.prototype.describeTrial=function() {
+  return("[Trial "+this.trial+" of "+this.options.trials_per_session+"; Session "+this.session+"]");
+}
+
+
 BG.start_game=function(gameix) {
   if (BG.plays>0) {
     BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
@@ -313,11 +350,15 @@ BG.pbar_mouse=function(e){
 BG.plays=0; 
 BG.games=[new BG.CoinProcess(0.5),
           new BG.CoinProcess(0.9),
-          new BG.RandomCoinProcess({}),
-          new BG.RandomCoinFromEnvelopeProcess({}),
+//          new BG.RandomCoinProcess({}),
+//          new BG.RandomCoinFromEnvelopeProcess({}),
+          new BG.MaskedRepeatedProcess("Coins from Urn Antelope",new BG.RandomCoinProcess({}),
+             {initialmessage:"I have a mysterious \"urn\" labelled \"Antelope\" full of coins, each with possibly different probabilities."}),
+          new BG.MaskedRepeatedProcess("Coins from Urn Basil",new BG.RandomCoinFromEnvelopeProcess({}),
+             {initialmessage:"I have a mysterious \"urn\" labelled \"Basil\" full of coins, each with possibly different probabilities."}),
 //          new BG.SimpleMarkovProcess([0.2,.8],1,[1]),
-          new BG.MaskedProcess('Mystery Game 1',new BG.CoinProcess(0.621711006318219),{}),
-          new BG.MaskedProcess('Mystery Game 2',new BG.SimpleMarkovProcess([0.15,.7],1,[0]),{})];
+          new BG.MaskedProcess('Mystery Game Apricot',new BG.CoinProcess(0.621711006318219),{}),
+          new BG.MaskedProcess('Mystery Game Banana',new BG.SimpleMarkovProcess([0.15,.7],1,[0]),{})];
 BG.setup();
 BG.start_game(1);
 
