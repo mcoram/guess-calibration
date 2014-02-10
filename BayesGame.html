@@ -1,4 +1,7 @@
 <html>
+<head>
+<title>Guess Calibration Game</title>
+</head>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 <!-- 
 First we want to decide on a payoff function P(a,x) to indicate the loss incurred from action a when outcome x is observed where:
@@ -35,6 +38,7 @@ Different choices for F could be different levels (i.e. explain the context is d
 <style type="text/css">
 .hot {color:#F0F}
 .cool {color:#080}
+.active {background-color:#DFD}
 ::-webkit-scrollbar {
     -webkit-appearance: none;
     width: 7px;
@@ -46,17 +50,22 @@ Different choices for F could be different levels (i.e. explain the context is d
 }
 
 </style>
-<div id="controls">
+<div id="controls" style="margin: 0 auto;width: 700px;">
+<div style="text-align:center">
+<h1 align="center">Guess Calibration Game</h1>
+<h4 align="center">current game / game selector: <select id="game_selector" class="active"></select>
+</h4>
+</div>
 <form id="controls_form">
 <div id="log" style="width:621px;height:200px;overflow-y:scroll;border:1px solid black;padding:2px;resize:both;">
 </div>
 <br>
 <i>Bet on the outcome using the slider to control the payouts.</i><br>
-<span style="padding-right:350px">Payout on <span class="hot"><span name="tails"></span>: <span id="payoff0"></span></span></span>
-Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></span></span><br>
+<span>Payout on <span class="hot"><span name="tails"></span>: <span id="payoff0"></span></span></span>
+<span style="float:right">Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></span></span></span><br>
 <!--I'm guessing slider radius is 10px and trying to account for how this affects the actual pixel coords. of the slider; something's slightly off below.-->
 <input type="range" id="slider1" min="0" max="600" style="width:621; margin:0px;"> <!-- make wider than max by 2*sliderradius+1 -->
-<input type="submit" value="Bet"><br>
+<input type="submit" value="Bet" class="active"><br>
 <div style="margin-left:10px;margin-right:10px"> <!-- pad on left and right by slider radius -->
 <canvas id="pbar" width="601" height="40"></canvas><!--width=max+1 so pixels run 0..max -->
 </div><br> 
@@ -65,9 +74,7 @@ Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></spa
 <br>
 Current score: <span id="score" class="cool"></span> after <span id="plays" class="cool"></span> plays, for an average score per play of <span id="score_per_play" class="cool"></span>.<br>
 <br>
-<!--You're playing "<span id="game_title"></span>".-->
-Want to play a different game? <select id="game_selector"></select><br>
-<button type="button" onclick="alert(JSON.stringify(BG.game_scores,undefined,2))">Show my scoreboard</button>
+<div style="text-align:center"><button type="button" class="active" onclick="alert(JSON.stringify(BG.game_scores,undefined,2))">Show my scoreboard</button></div>
 </div>
 <script>
 BG={uscale:6, pbarmax:600};
@@ -352,10 +359,10 @@ BG.games=[new BG.CoinProcess(0.5),
           new BG.CoinProcess(0.9),
 //          new BG.RandomCoinProcess({}),
 //          new BG.RandomCoinFromEnvelopeProcess({}),
-          new BG.MaskedRepeatedProcess("Coins from Urn Antelope",new BG.RandomCoinProcess({}),
-             {initialmessage:"I have a mysterious \"urn\" labelled \"Antelope\" full of coins, each with possibly different probabilities."}),
+          new BG.MaskedRepeatedProcess("Coins from Urn Anise",new BG.RandomCoinProcess({}),
+             {initialmessage:"I have a mysterious urn labelled \"Anise\" full of coins, each with possibly different probabilities."}),
           new BG.MaskedRepeatedProcess("Coins from Urn Basil",new BG.RandomCoinFromEnvelopeProcess({}),
-             {initialmessage:"I have a mysterious \"urn\" labelled \"Basil\" full of coins, each with possibly different probabilities."}),
+             {initialmessage:"I have a mysterious urn labelled \"Basil\" full of coins, each with possibly different probabilities."}),
 //          new BG.SimpleMarkovProcess([0.2,.8],1,[1]),
           new BG.MaskedProcess('Mystery Game Apricot',new BG.CoinProcess(0.621711006318219),{}),
           new BG.MaskedProcess('Mystery Game Banana',new BG.SimpleMarkovProcess([0.15,.7],1,[0]),{})];
