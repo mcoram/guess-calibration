@@ -67,6 +67,7 @@ Current score: <span id="score" class="cool"></span> after <span id="plays" clas
 <br>
 <!--You're playing "<span id="game_title"></span>".-->
 Want to play a different game? <select id="game_selector"></select><br>
+<button type="button" onclick="alert(JSON.stringify(BG.game_scores,undefined,2))">Show my scoreboard</button>
 </div>
 <script>
 BG={uscale:6, pbarmax:600};
@@ -121,13 +122,13 @@ BG.describeCoin=function(p) {
 
 BG.CoinProcess=function(pheads) {
   this.pheads=pheads;
+  this.title="Predict a "+BG.describeCoin(this.pheads);
+  this.labels=["Tails","Heads"];
 }
-BG.CoinProcess.prototype.title=function(){return("Predict a "+BG.describeCoin(this.pheads))};
-BG.CoinProcess.prototype.labels=function(){return(["Tails","Heads"])};
-BG.CoinProcess.prototype.initialize=function(){return({html:"",state:{}})};
-BG.CoinProcess.prototype.draw=function(state){
+BG.CoinProcess.prototype.initialize=function(){return({html:""})};
+BG.CoinProcess.prototype.draw=function(){
   var coindesc=BG.describeCoin(this.pheads);
-  var result={html: "I'm about to flip a "+coindesc+". Will I get heads?", state:state};
+  var result={html: "I'm about to flip a "+coindesc+". Will I get heads?"};
   result.outcome=(Math.random()<=this.pheads)+0;
   return(result);
 };
@@ -140,20 +141,19 @@ BG.extendObject=function(defaults,override) {
 }
 BG.MaskedProcess=function(title,game,options) {
   this.game=game;
-  this.mytitle=title;
+  this.title=title;
   var defaults={labels:["No","Yes"],initialmessage:"I'm a mysterious process.", message:"Will I say yes this time?"};
   options=BG.extendObject(defaults,options);
   this.options=options;
+  this.labels=options.labels;
 }
-BG.MaskedProcess.prototype.title=function(){return(this.mytitle);}
-BG.MaskedProcess.prototype.labels=function(){return(this.options.labels);}
 BG.MaskedProcess.prototype.initialize=function(){
   var i1=this.game.initialize();
-  return({html:this.options.initialmessage,state:i1.state});
+  return({html:this.options.initialmessage});
 }
-BG.MaskedProcess.prototype.draw=function(state){
-  var d1=this.game.draw(state);
-  var result={html:this.options.message, state:d1.state, outcome:d1.outcome};
+BG.MaskedProcess.prototype.draw=function(){
+  var d1=this.game.draw();
+  var result={html:this.options.message, outcome:d1.outcome};
   return(result);
 }
 
@@ -161,24 +161,61 @@ BG.SimpleMarkovProcess=function(transprob,depth,initial) {
   this.transprob=transprob;
   this.depth=depth;
   this.initial=initial;
-  this.mytitle='Predict a Markov process with transitions: '+JSON.stringify(transprob)+" and inital: "+JSON.stringify(initial);
-  this.options={labels:["Down","Up"]};
+  this.title='Predict a Markov process with transitions: '+JSON.stringify(transprob)+" and inital: "+JSON.stringify(initial);
+  this.labels=["Down","Up"];
 }
-BG.SimpleMarkovProcess.prototype.title=function(){return(this.mytitle);}
-BG.SimpleMarkovProcess.prototype.labels=function(){return(this.options.labels);}
 BG.SimpleMarkovProcess.prototype.initialize=function() {
-  return({html:"",state:this.initial});  
+  this.state=this.initial;
+  return({html:""});  
   }
-BG.SimpleMarkovProcess.prototype.draw=function(state) {
+BG.SimpleMarkovProcess.prototype.draw=function() {
+  var state=this.state;
   var tp=this.transprob;
   for (var i=0;i<this.depth;i++) {
      tp=tp[state[i]];
   }
   // At this point tp should be a number in [0,1]
   var outcome=(Math.random()<=tp)+0;
-  state=state.slice(1).concat([outcome]);
-  var result={html: "Will it be up this time?", state:state, outcome:outcome};
+  this.state=state.slice(1).concat([outcome]);
+  var result={html: "Will it be up this time?", outcome:outcome};
   return(result);
+}
+
+BG.RandomCoinProcess=function(options) {
+  var defaults={labels:["Tails","Heads"],title:"Predict either a p=.3 coin or a p=.8 coin",probv:[.3,.8]};
+  options=BG.extendObject(defaults,options);
+  this.options=options;
+  this.labels=options.labels;
+  this.title=options.title;
+  this.probv=options.probv;
+}
+BG.RandomCoinProcess.prototype=new BG.CoinProcess(0.5);
+BG.RandomCoinProcess.prototype.initialize=function(){
+  var ix=Math.floor(Math.random()*this.probv.length);
+  this.pheads=this.probv[ix]; // override the prototype's pheads.
+  return({html:"Ok. I've picked the coin."})
+  };
+
+BG.RandomCoinFromEnvelopeProcess=function(options) {
+  var defaults={labels:["Tails","Heads"],title:"Predict a coin whose freq. is drawn from a Beta(1,2) distribution", envelope:function(x){return(Math.pow(1-x,1))}};
+  options=BG.extendObject(defaults,options);
+  this.options=options;
+  this.labels=options.labels;
+  this.title=options.title;
+  this.envelope=options.envelope;
+}
+BG.RandomCoinFromEnvelopeProcess.prototype=new BG.CoinProcess(0.5);
+// aka rejection sample
+BG.envelope_sample=function(envelope) {// here envelope is assumed to map from [0,1] into [0,1]
+  var x,y;
+  do {
+     x=Math.random();y=Math.random();
+     } while(y>envelope(x));
+  return(x);
+}
+BG.RandomCoinFromEnvelopeProcess.prototype.initialize=function(){
+  this.pheads=BG.envelope_sample(this.envelope);
+  return({html:"Ok. I've picked the coin."})
 }
 
 BG.start_game=function(gameix) {
@@ -193,16 +230,14 @@ BG.start_game=function(gameix) {
   BG.score=0;
   BG.plays=0;
   BG.game=game;
-  BG.title=game.title();
+  BG.title=game.title;
   BG.logEvent("");
   BG.logEvent("<span class='hot'>Starting game: "+BG.title+"</span>");
-  BG.labels=game.labels();
+  BG.labels=game.labels;
 
   var init=BG.game.initialize();
-  BG.game_state=init.state;
   BG.logEvent(init.html);
-  BG.draw=BG.game.draw(BG.game_state);
-  BG.game_state=BG.draw.state;
+  BG.draw=BG.game.draw();
   BG.logEvent(BG.draw.html);
 
   BG.do_refresh();
@@ -210,15 +245,14 @@ BG.start_game=function(gameix) {
 
 BG.handle_submit=function(event) {
   var payoff=BG.payoff[BG.draw.outcome];
-  var msg1="You bet as if p="+BG.a.toFixed(3)+" and the outcome was "+BG.labels[BG.draw.outcome]+".";
+  var msg1="You bet as if p="+BG.a.toFixed(3)+" and the outcome was <span class='cool'>"+BG.labels[BG.draw.outcome]+"</span>.";
   var msg2;
   if (payoff>=0) msg2="You gained "+payoff.toFixed(3)+" points."
   else           msg2="You lost "+(-payoff).toFixed(3)+" points."
   BG.score+=payoff;
   BG.plays+=1;
   BG.logEvent("<span style='color:#55F'>"+msg1+" "+msg2+"</span>")
-  BG.draw=BG.game.draw(BG.game_state);
-  BG.game_state=BG.draw.state;
+  BG.draw=BG.game.draw();
   var current_score={score: BG.score, plays: BG.plays, avgscore: BG.score/BG.plays};
   if (BG.plays===1) { // create a game_scores object for this session
     if (BG.game_scores[BG.title] === undefined) BG.game_scores[BG.title]=[];
@@ -255,7 +289,7 @@ BG.setup=function() {
   var selectopts="";
   for (var gameix in BG.games) {
     var game=BG.games[gameix];
-    var gt=game.title();
+    var gt=game.title;
     selectopts+="<option value='"+gameix+"'>"+gt+"</option>"
     }
   $("#game_selector").html(selectopts);
@@ -276,8 +310,11 @@ BG.pbar_mouse=function(e){
 BG.plays=0; 
 BG.games=[new BG.CoinProcess(0.5),
           new BG.CoinProcess(0.9),
+          new BG.RandomCoinProcess({}),
+          new BG.RandomCoinFromEnvelopeProcess({}),
+//          new BG.SimpleMarkovProcess([0.2,.8],1,[1]),
           new BG.MaskedProcess('Mystery Game 1',new BG.CoinProcess(0.621711006318219),{}),
-          new BG.SimpleMarkovProcess([0.15,.6],1,[0])];
+          new BG.MaskedProcess('Mystery Game 2',new BG.SimpleMarkovProcess([0.15,.7],1,[0]),{})];
 BG.setup();
 BG.start_game(1);
 
