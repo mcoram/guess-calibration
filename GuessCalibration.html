@@ -1,5 +1,6 @@
 <html>
 <head>
+<meta http-equiv="content-type" content="text-html; charset=utf-8">
 <title>Guess Calibration Game</title>
 </head>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -264,19 +265,42 @@ BG.MaskedRepeatedProcess.prototype.describeTrial=function() {
   return("[Trial "+this.trial+" of "+this.options.trials_per_session+"; Session "+this.session+"]");
 }
 
+BG.QuizProcess=function(options) {
+  var defaults={labels:["False","True"],initial_message:"",
+    title:"Title is Mandatory",
+    questions:[{q:"1+1=2. True?",a:1}] // follow this format to supply questions / answers
+    };
+  options=BG.extendObject(defaults,options);
+  this.options=options;
+  this.labels=options.labels;
+  this.title=options.title;
+  this.questions=options.questions;
+  this.trial=0;
+}
+BG.QuizProcess.prototype.initialize=function(){return({html:this.options.initial_message})};
+BG.QuizProcess.prototype.draw=function(){
+  if (this.trial < this.questions.length) {
+    var qa=this.questions[this.trial];
+    var result={html: qa.q, outcome:qa.a};
+    this.trial+=1;
+    return(result);
+    }
+  else return{html:"... And we're out of questions. Thanks for playing.",stop:true}
+};
+
 
 BG.start_game=function(gameix) {
   if (BG.plays>0) {
     BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
        '</span> after <span class="cool">'+BG.plays+'</span> plays, for an average score per play of <span class="cool">'+
        (BG.score/BG.plays).toFixed(3)+'</span>.');
-
     }
   var game=BG.games[gameix];
   $("#game_selector")[0].value=gameix;
   BG.score=0;
   BG.plays=0;
   BG.game=game;
+  BG.stop=false;
   BG.title=game.title;
   BG.logEvent("");
   BG.logEvent("<span class='hot'>Starting game: "+BG.title+"</span>");
@@ -286,29 +310,39 @@ BG.start_game=function(gameix) {
   BG.logEvent(init.html);
   BG.draw=BG.game.draw();
   BG.logEvent(BG.draw.html);
-
+  if (BG.draw.stop===true) {
+     BG.stop=true;
+     }
   BG.do_refresh();
 };
 
 BG.handle_submit=function(event) {
-  var payoff=BG.payoff[BG.draw.outcome];
-  var msg1="You bet as if p="+BG.a.toFixed(3)+" and the outcome was <span class='cool'>"+BG.labels[BG.draw.outcome]+"</span>.";
-  var msg2;
-  if (payoff>=0) msg2="You gained "+payoff.toFixed(3)+" points."
-  else           msg2="You lost "+(-payoff).toFixed(3)+" points."
-  BG.score+=payoff;
-  BG.plays+=1;
-  BG.logEvent("<span style='color:#55F'>"+msg1+" "+msg2+"</span>")
-  BG.draw=BG.game.draw();
-  var current_score={score: BG.score, plays: BG.plays, avgscore: BG.score/BG.plays};
-  if (BG.plays===1) { // create a game_scores object for this session
-    if (BG.game_scores[BG.title] === undefined) BG.game_scores[BG.title]=[];
-    BG.game_scores[BG.title]=BG.game_scores[BG.title].concat([current_score]);
+  if (BG.stop===true) {
+    alert("This game is finished. Choose a new game from the selector at the top.")
     }
   else {
-    BG.game_scores[BG.title]=BG.game_scores[BG.title].slice(0,-1).concat([current_score]);
+    var payoff=BG.payoff[BG.draw.outcome];
+    var msg1="You bet as if p="+BG.a.toFixed(3)+" and the outcome was <span class='cool'>"+BG.labels[BG.draw.outcome]+"</span>.";
+    var msg2;
+    if (payoff>=0) msg2="You gained "+payoff.toFixed(3)+" points."
+    else           msg2="You lost "+(-payoff).toFixed(3)+" points."
+    BG.score+=payoff;
+    BG.plays+=1;
+    BG.logEvent("<span style='color:#55F'>"+msg1+" "+msg2+"</span>")
+    BG.draw=BG.game.draw();
+    if (BG.draw.stop===true) {
+       BG.stop=true;
+       }
+    var current_score={score: BG.score, plays: BG.plays, avgscore: BG.score/BG.plays};
+    if (BG.plays===1) { // create a game_scores object for this session
+      if (BG.game_scores[BG.title] === undefined) BG.game_scores[BG.title]=[];
+      BG.game_scores[BG.title]=BG.game_scores[BG.title].concat([current_score]);
+      }
+    else {
+      BG.game_scores[BG.title]=BG.game_scores[BG.title].slice(0,-1).concat([current_score]);
+      }
+    sessionStorage.setItem('game_scores',JSON.stringify(BG.game_scores));
     }
-  sessionStorage.setItem('game_scores',JSON.stringify(BG.game_scores));
   BG.logEvent(BG.draw.html);
   BG.do_refresh();
 }
@@ -355,8 +389,18 @@ BG.pbar_mouse=function(e){
 }
 
 BG.plays=0; 
+BG.quiz1=new BG.QuizProcess({title:"Quiz 1", questions: [
+  {q:"The 2010 US population was more than 325 million persons. True? [Source: 2010 US Census]", a:0},
+  {q:"The city of Malé has an average June temperature in excess of 31.5 degrees celcius. True? [Source: 2014/02 Wikipedia]", a:0},
+  {q:"The population of San Diego city, California is less than 1.5 million persons. True? [Source: 2010 US Census]", a:1},
+  {q:"The Swiss Federal consititution recognizes German, French, Italian, and Romansh as the national languages of Switzerland. True? [Source: 2014/02 Wikipedia]", a:1},
+  {q:"Only the male yellow-winged darter dragonfly has large amounts of saffron-yellow colouration to the basal area of each wing. True? [Source: 2014/02 Wikipedia]", a:0},
+  {q:"The 2010 US population was more than 300 million persons. True? [Source: 2010 US Census]", a:1}
+  ],
+  initial_message: "Guess the answers to these true/false questions. The final arbiter for truth is the source cited."});
 BG.games=[new BG.CoinProcess(0.5),
           new BG.CoinProcess(0.9),
+          BG.quiz1,
 //          new BG.RandomCoinProcess({}),
 //          new BG.RandomCoinFromEnvelopeProcess({}),
           new BG.MaskedRepeatedProcess("Coins from Urn Anise",new BG.RandomCoinProcess({}),
