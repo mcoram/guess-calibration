@@ -398,9 +398,10 @@ BG.quiz1=new BG.QuizProcess({title:"Quiz 1", questions: [
   {q:"Pisan scientist Galileo Galilei was baptized in the octagonal font of the Baptistry. True? [Source: 2012 Lonely Planet]", a:1},
   {q:"The Swiss Federal consititution recognizes German, French, Italian, and Romansh as the national languages of Switzerland. True? [Source: 2014/02 Wikipedia]", a:1},
   {q:"Only the male yellow-winged darter dragonfly has large amounts of saffron-yellow colouration on the basal area of each wing. True? [Source: 2014/02 Wikipedia]", a:0},
-  {q:"The 2010 US population was more than 300 million persons. True? [Source: 2010 US Census]", a:1}
+  {q:"The 2010 US population was more than 300 million persons. True? [Source: 2010 US Census]", a:1},
+  {q:"I picked a number j at random from 1 to 10, then turned to page 100 of Harry Potter year 5. The j'th word was \"the\". True?", a:0} // It was j=9 and "George" for my edition.
   ],
-  initial_message: "Guess the answers to these true/false questions."});
+  initial_message: "Guess the answers to these ten true/false questions."});
 BG.games=[BG.quiz1,
           new BG.CoinProcess(0.5),
           new BG.CoinProcess(0.9),
