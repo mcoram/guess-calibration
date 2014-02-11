@@ -279,7 +279,10 @@ BG.QuizProcess=function(options) {
   this.questions=options.questions;
   this.trial=0;
 }
-BG.QuizProcess.prototype.initialize=function(){return({html:this.options.initial_message})};
+BG.QuizProcess.prototype.initialize=function(){
+  this.trial=0;
+  return({html:this.options.initial_message})
+  };
 BG.QuizProcess.prototype.draw=function(){
   if (this.trial < this.questions.length) {
     var qa=this.questions[this.trial];
@@ -291,11 +294,14 @@ BG.QuizProcess.prototype.draw=function(){
 };
 
 
-BG.start_game=function(gameix) {
-  if (BG.plays>0) {
+BG.show_final_score=function() {
     BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
        '</span> after <span class="cool">'+BG.plays+'</span> plays, for an average score per play of <span class="cool">'+
        (BG.score/BG.plays).toFixed(3)+'</span>.');
+}
+BG.start_game=function(gameix) {
+  if (BG.plays>0 && !BG.stop) {
+    BG.show_final_score();
     }
   var game=BG.games[gameix];
   $("#game_selector")[0].value=gameix;
@@ -344,8 +350,12 @@ BG.handle_submit=function(event) {
       BG.game_scores[BG.title]=BG.game_scores[BG.title].slice(0,-1).concat([current_score]);
       }
     sessionStorage.setItem('game_scores',JSON.stringify(BG.game_scores));
+    BG.logEvent(BG.draw.html);
+    if (BG.stop===true) {
+      BG.show_final_score();
+      BG.logEvent("Choose a new game from the selector at the top.")
+      }
     }
-  BG.logEvent(BG.draw.html);
   BG.do_refresh();
 }
 
@@ -390,7 +400,7 @@ BG.pbar_mouse=function(e){
   if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
 }
 
-BG.plays=0; 
+BG.plays=0; BG.stop=false;
 BG.quiz1=new BG.QuizProcess({title:"Quiz 1", questions: [
   {q:"The 2010 US population was more than 325 million persons. True? [Source: 2010 US Census]", a:0},
   {q:"\"The Little Prince\" was written by A. A. Milne. True? [Source 2014/02 Wikipedia]",a:0},
