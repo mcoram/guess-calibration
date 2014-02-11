@@ -10,6 +10,7 @@ a \in [0,1], x \in {0,1}
 p=argsup_a p*P(a,1)+(1-p)*P(a,0)
 The meaning of this latter property is that if Pr(X=1)=p is the true probability of "heads" then the choice of a that maximizes the expected payout is a=p.
 One conventional choice is: P(a,x)=log(a)*x+log(1-a)*(1-x), which correponds to the log-likelihood of x under a Bernoulli(a) model (or negate it and call it a loss and talk about entropy and such)
+(For further discussion, see, e.g. http://faculty.engr.utexas.edu/bickel/Papers/QSL_Comparison.pdf)
 The expected payout if p is true is, p*log(a)+(1-p)*log(1-a), and d/da of this is: p/a-(1-p)/(1-a)=(p-a)/(a*(1-a)) (for a \ne 0,1)
 From this and checking the special cases, we confirm that it, or it plus any finite constant, obeys our argsup property.
 [Of course, the same thing would work for multiple choice via multinomial log-likelihood.]
