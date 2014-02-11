@@ -400,9 +400,9 @@ BG.quiz1=new BG.QuizProcess({title:"Quiz 1", questions: [
   {q:"The 2010 US population was more than 300 million persons. True? [Source: 2010 US Census]", a:1}
   ],
   initial_message: "Guess the answers to these true/false questions. The final arbiter for truth is the source cited."});
-BG.games=[new BG.CoinProcess(0.5),
+BG.games=[BG.quiz1,
+          new BG.CoinProcess(0.5),
           new BG.CoinProcess(0.9),
-          BG.quiz1,
 //          new BG.RandomCoinProcess({}),
 //          new BG.RandomCoinFromEnvelopeProcess({}),
           new BG.MaskedRepeatedProcess("Coins from Urn Anise",new BG.RandomCoinProcess({}),
@@ -413,7 +413,7 @@ BG.games=[new BG.CoinProcess(0.5),
           new BG.MaskedProcess('Mystery Game Apricot',new BG.CoinProcess(0.621711006318219),{}),
           new BG.MaskedProcess('Mystery Game Banana',new BG.SimpleMarkovProcess([0.15,.7],1,[0]),{})];
 BG.setup();
-BG.start_game(1);
+BG.start_game(0);
 
 </script>
 </html>
