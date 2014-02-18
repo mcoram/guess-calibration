@@ -1,437 +1,76 @@
 <html>
+
 <head>
-<meta http-equiv="content-type" content="text-html; charset=utf-8">
-<title>Guess Calibration Game</title>
+  <meta http-equiv="content-type" content="text-html; charset=utf-8">
+  <title>Guess Calibration Game</title>
 </head>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-<!-- 
-First we want to decide on a payoff function P(a,x) to indicate the loss incurred from action a when outcome x is observed where:
-a \in [0,1], x \in {0,1}
-p=argsup_a p*P(a,1)+(1-p)*P(a,0)
-The meaning of this latter property is that if Pr(X=1)=p is the true probability of "heads" then the choice of a that maximizes the expected payout is a=p.
-One conventional choice is: P(a,x)=log(a)*x+log(1-a)*(1-x), which correponds to the log-likelihood of x under a Bernoulli(a) model (or negate it and call it a loss and talk about entropy and such)
-(For further discussion, see, e.g. http://faculty.engr.utexas.edu/bickel/Papers/QSL_Comparison.pdf)
-The expected payout if p is true is, p*log(a)+(1-p)*log(1-a), and d/da of this is: p/a-(1-p)/(1-a)=(p-a)/(a*(1-a)) (for a \ne 0,1)
-From this and checking the special cases, we confirm that it, or it plus any finite constant, obeys our argsup property.
-[Of course, the same thing would work for multiple choice via multinomial log-likelihood.]
-
-So we can make a Bayes game where there's a certain event about to happen, x=1 or x=0, and we ask the player to move a slider, which moves a via, say, a=logistic(slider scaled to [-5,5]),
-but we just show them that they'll win par+L(a,1) if x=1 happens and par+L(a,0) if x=0 happens and let them choose which payouts they want. In this way we'll obtain their probabilities about x
-and we can check if they're callibrated.
-
-So where to get these "future" X's?
-One way would be to generate them from facts about the world, e.g. did Microsoft stock go up today (x=1) or down (x=0)? 
-  If you asked them about future events and checked them later, it'd be a fair way to score prognosticators (though beware the variance of the score if they're guessing too close to 0,1)
-  The absolute score wouldn't mean too much (sure you could measure it in bits, etc.) but the relative score b/w players is meaningful. I guess you could set a par value by taking
-  the prediction of some consistently available pundit, adjusting their 0/1 prediction to have favorable choices of a_0, a_1, and calling the negative of that score par.
-Or one could take basic quantitative facts, like, y=the population of Europe, and generate questions like, say, "Is the population of Europe within (delta*y) of (gamma*y) or not?" where gamma is a random log-normal with some parameters mu and sigma and delta=0.1.
-Or one could simulate:
- One could check simulate X randomly, and check if they choose a suitably, when they know the generative model for X.
- One could simulate X_1, X_2, ... iid Bernoulli(p) (with or without a clue for p) and check that their choices of a converge suitably to p.
- One could simulate p~F and then conditionally simulate X_1, X_2, ... iid Bernoulli(p) (i.e. simulate the X_i's according to some exchangable process). This generalizes the previous -- they could know more or less about F a priori. (One extreme: F puts mass 1 on 1/3. Another: a point is picked uniformly from the right triangle formed by the coordinate axes and the line y=1-x, the value of this point on the x-axis is the probability p used for all subsequent draws. Another p~Beta(3,8) but don't tell them)
- One could simulate F from G, some distribution on distributions on [0,1], and (conditionally) simulate p_i's iid from F and (conditionally) simulate X_{i,j} iid Bernoulli(p_i). Then show them various X_{i,j}'s and see how they update all the a_{i,j}'s as they go. You could tell them more or less about G.
- And on and on... G could be random with hyperparameters, or i could have more structure (e.g. in a lattice or a graph or manifold or ...) and the p_i's could obeys a suitable random process on the space of i's.
-What about time series? E.g. we could make a simulation in which P(X_n=1 | past) depends only on X_{n-1} or maybe on some part of the past plus auxilliary variables Y_{n-1} that they get to observe before they make their guess. One could use a stock market model for this.
-
-Maybe the "right triangle" version of the game, where I don't tell them, but let them play multiple times (i.e. a fresh p each time) and see if they adapt their play style to the truth about F or not.
-Different choices for F could be different levels (i.e. explain the context is different), so they can learn different biases for the different contexts.
-
--->
 <style type="text/css">
-.hot {color:#B0E}
-.cool {color:#080}
-.active {background-color:#EFE}
-::-webkit-scrollbar {
+  .hot {
+    color: #B0E
+  }
+  .cool {
+    color: #080
+  }
+  .active {
+    background-color: #EFE
+  }
+  ::-webkit-scrollbar {
     -webkit-appearance: none;
     width: 7px;
-}
-::-webkit-scrollbar-thumb {
+  }
+  ::-webkit-scrollbar-thumb {
     border-radius: 4px;
-    background-color: rgba(0,0,0,.5);
-    -webkit-box-shadow: 0 0 1px rgba(255,255,255,.5);
-}
-
+    background-color: rgba(0, 0, 0, .5);
+    -webkit-box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+  }
 </style>
 <div id="controls" style="margin: 0 auto;width: 700px;">
-<div style="text-align:center">
-<h1 align="center">Guess Calibration Game</h1>
-<h4 align="center">current game / game selector: <select id="game_selector" class="active"></select>
+  <div style="text-align:center">
+    <h1 align="center">Guess Calibration Game</h1>
+    <h4 align="center">current game / game selector: <select id="game_selector" class="active"></select>
 </h4>
+  </div>
+  <form id="controls_form">
+    <div id="log" style="width:621px;height:200px;overflow-y:scroll;border:1px solid black;padding:2px;resize:both;">
+    </div>
+    <br>
+    <i>Bet on the outcome using the slider to control the payouts.</i>
+    <br>
+    <div style="width:621px">
+      <span>Payout on <span class="hot"><span name="tails"></span>: <span id="payoff0"></span></span>
+      </span>
+      <span style="float:right">Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></span></span>
+      </span>
+      <br>
+    </div>
+    <!--I'm guessing slider radius is 10px and trying to account for how this affects the actual pixel coords. of the slider; something's slightly off below.-->
+    <input type="range" id="slider1" min="0" max="600" style="width:621; margin:0px;">
+    <!-- make wider than max by 2*sliderradius+1 -->
+    <input type="submit" value="Bet" class="active">
+    <br>
+    <div style="margin-left:10px;margin-right:10px">
+      <!-- pad on left and right by slider radius -->
+      <canvas id="pbar" width="601" height="40"></canvas>
+      <!--width=max+1 so pixels run 0..max -->
+    </div>
+    <br>
+  </form>
+  (These payouts maximize your expected return if you think <span class="hot">p=<span id="a"></span></span>is the probability of <span name="heads"></span>.)
+  <br>
+  <br>Current score: <span id="score" class="cool"></span> after <span id="plays" class="cool"></span> plays, for an average score per play of <span id="score_per_play" class="cool"></span>.
+  <br>
+  <br>
+  <br>
+  <br>
+  <div style="text-align:center">
+    <button type="button" class="active" onclick="alert(JSON.stringify(BG.game_scores,undefined,2))">Show my scoreboard</button>
+    <a href="https://github.com/mcoram/guess-calibration">View/Fork on GitHub</a>
+  </div>
 </div>
-<form id="controls_form">
-<div id="log" style="width:621px;height:200px;overflow-y:scroll;border:1px solid black;padding:2px;resize:both;">
-</div>
-<br>
-<i>Bet on the outcome using the slider to control the payouts.</i><br>
-<div style="width:621px">
-<span>Payout on <span class="hot"><span name="tails"></span>: <span id="payoff0"></span></span></span>
-<span style="float:right">Payout on <span class="hot"><span name="heads"></span>: <span id="payoff1"></span></span></span><br>
-</div>
-<!--I'm guessing slider radius is 10px and trying to account for how this affects the actual pixel coords. of the slider; something's slightly off below.-->
-<input type="range" id="slider1" min="0" max="600" style="width:621; margin:0px;"> <!-- make wider than max by 2*sliderradius+1 -->
-<input type="submit" value="Bet" class="active"><br>
-<div style="margin-left:10px;margin-right:10px"> <!-- pad on left and right by slider radius -->
-<canvas id="pbar" width="601" height="40"></canvas><!--width=max+1 so pixels run 0..max -->
-</div><br> 
-</form>
-(These payouts maximize your expected return if you think <span class="hot">p=<span id="a"></span></span> is the probability of <span name="heads"></span>.)<br>
-<br>
-Current score: <span id="score" class="cool"></span> after <span id="plays" class="cool"></span> plays, for an average score per play of <span id="score_per_play" class="cool"></span>.<br>
-<br><br><br>
-<div style="text-align:center">
-<button type="button" class="active" onclick="alert(JSON.stringify(BG.game_scores,undefined,2))">Show my scoreboard</button>
-<a href="https://github.com/mcoram/guess-calibration">View/Fork on GitHub</a>
-</div>
-</div>
-<script>
-BG={uscale:6, pbarmax:600};
-BG.draw_pscale=function() {
-  var canvas=$("#pbar")[0];
-  BG.pbar=canvas.getContext("2d");
-  BG.pbar.clearRect(0, 0, canvas.width, canvas.height);
-  BG.pbar.font = "10px sans-serif";
-  BG.pbar.textBaseline = "top";
-  BG.pbar.textAlign = "center";
-  var pv=[0.01,0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.95,0.99];
-  for (var pi in pv) {
-    var p=pv[pi];
-    var pu=-Math.log(1/p-1);
-    var px=(pu/BG.uscale+1)/2*(BG.pbarmax);
-    BG.pbar.fillRect(px,0,1,10);
-    BG.pbar.fillText(p.toFixed(2), px ,10+10*(pi%3));
-  };
-}
+<script src="game_logic.js"></script>
+<script src="processes.js"></script>
+<script src="quiz1.js"></script>
+<script src="game_init.js"></script>
 
-BG.do_refresh=function() {
-  BG.draw_pscale();
-  var s=$("#slider1")[0];
-  var u=(2*s.value/(BG.pbarmax)-1)*BG.uscale;
-  var a=1/(1+Math.exp(-u));
-  // Allow the player to "die" if they want to
-  if (s.value==BG.pbarmax) {u=Infinity;a=1;}
-  if (s.value==0) {u=-Infinity;a=0;}
-  BG.a=a;
-  var par1=1/Math.log(2);
-  var par0=1.0;
-  var payoff0=par0+par1*Math.log(1-a);
-  var payoff1=par0+par1*Math.log(a);
-  BG.payoff=[payoff0, payoff1];
-  $("#payoff0").html(payoff0.toFixed(3));
-  $("#payoff1").html(payoff1.toFixed(3));
-  $("#a").html(a.toFixed(3));
-  $("[name='heads']").html(BG.labels[1]);
-  $("[name='tails']").html(BG.labels[0]);
-  $("#score").html(BG.score.toFixed(3));
-  $("#plays").html(BG.plays);
-  $("#score_per_play").html((BG.score/BG.plays).toFixed(3));
-  $("#game_title").html(BG.title);
-  BG.pbar.fillStyle="#B0E";
-  BG.pbar.fillRect(s.value,0,1,10);
-  BG.pbar.fillStyle="#000";
-}
-
-BG.describeCoin=function(p) {
-  var coindesc;
-  if (p===0.5) coindesc="fair coin";
-  else coindesc="p="+p.toFixed(2)+" coin";
-  return(coindesc);
-}
-
-BG.CoinProcess=function(pheads) {
-  this.pheads=pheads;
-  this.title="Predict a "+BG.describeCoin(this.pheads);
-  this.labels=["Tails","Heads"];
-}
-BG.CoinProcess.prototype.initialize=function(){return({html:""})};
-BG.CoinProcess.prototype.draw=function(){
-  var coindesc=BG.describeCoin(this.pheads);
-  var result={html: "I'm about to flip a "+coindesc+". Will I get heads?"};
-  result.outcome=(Math.random()<=this.pheads)+0;
-  return(result);
-};
-
-BG.duplicateObject=function(obj) { // for object literals; shallow copy
-  return($.extend(true,{},obj));
-}
-BG.extendObject=function(defaults,override) {
-  return($.extend(BG.duplicateObject(defaults),override));
-}
-BG.MaskedProcess=function(title,game,options) {
-  this.game=game;
-  this.title=title;
-  var defaults={labels:["No","Yes"],initialmessage:"I'm a mysterious process.", message:"Will I say yes this time?"};
-  options=BG.extendObject(defaults,options);
-  this.options=options;
-  this.labels=options.labels;
-}
-BG.MaskedProcess.prototype.initialize=function(){
-  var i1=this.game.initialize();
-  return({html:this.options.initialmessage});
-}
-BG.MaskedProcess.prototype.draw=function(){
-  var d1=this.game.draw();
-  var result={html:this.options.message, outcome:d1.outcome};
-  return(result);
-}
-
-BG.SimpleMarkovProcess=function(transprob,depth,initial) {
-  this.transprob=transprob;
-  this.depth=depth;
-  this.initial=initial;
-  this.title='Predict a Markov process with transitions: '+JSON.stringify(transprob)+" and inital: "+JSON.stringify(initial);
-  this.labels=["Down","Up"];
-}
-BG.SimpleMarkovProcess.prototype.initialize=function() {
-  this.state=this.initial;
-  return({html:""});  
-  }
-BG.SimpleMarkovProcess.prototype.draw=function() {
-  var state=this.state;
-  var tp=this.transprob;
-  for (var i=0;i<this.depth;i++) {
-     tp=tp[state[i]];
-  }
-  // At this point tp should be a number in [0,1]
-  var outcome=(Math.random()<=tp)+0;
-  this.state=state.slice(1).concat([outcome]);
-  var result={html: "Will it be up this time?", outcome:outcome};
-  return(result);
-}
-
-BG.RandomCoinProcess=function(options) {
-  var defaults={labels:["Tails","Heads"],title:"Predict either a p=.3 coin or a p=.8 coin",probv:[.3,.8]};
-  options=BG.extendObject(defaults,options);
-  this.options=options;
-  this.labels=options.labels;
-  this.title=options.title;
-  this.probv=options.probv;
-}
-BG.RandomCoinProcess.prototype=new BG.CoinProcess(0.5);
-BG.RandomCoinProcess.prototype.initialize=function(){
-  var ix=Math.floor(Math.random()*this.probv.length);
-  this.pheads=this.probv[ix]; // override the prototype's pheads.
-  return({html:"Ok. I've picked the coin."})
-  };
-
-BG.RandomCoinFromEnvelopeProcess=function(options) {
-  var defaults={labels:["Tails","Heads"],title:"Predict a coin whose freq. is drawn from a Beta(1,2) distribution", envelope:function(x){return(Math.pow(1-x,1))}};
-  options=BG.extendObject(defaults,options);
-  this.options=options;
-  this.labels=options.labels;
-  this.title=options.title;
-  this.envelope=options.envelope;
-}
-BG.RandomCoinFromEnvelopeProcess.prototype=new BG.CoinProcess(0.5);
-// aka rejection sample
-BG.envelope_sample=function(envelope) {// here envelope is assumed to map from [0,1] into [0,1]
-  var x,y;
-  do {
-     x=Math.random();y=Math.random();
-     } while(y>envelope(x));
-  return(x);
-}
-BG.RandomCoinFromEnvelopeProcess.prototype.initialize=function(){
-  this.pheads=BG.envelope_sample(this.envelope);
-  return({html:"Ok. I've picked the coin."})
-}
-
-BG.MaskedRepeatedProcess=function(title,game,options) {
-  this.game=game;
-  this.title=title;
-  var defaults={
-      labels:["Tails","Heads"],
-      initialmessage:"I have an \"urn\" of coins, with possibly different probabilities.", 
-      restartmessage:"I'm picking a fresh coin from the urn.",
-      message:"I'm about to flip the coin. Will I get heads?",
-      trials_per_session:10};
-  options=BG.extendObject(defaults,options);
-  this.options=options;
-  this.labels=options.labels;
-  this.session=1;
-}
-BG.MaskedRepeatedProcess.prototype.initialize=function(){
-  var i1=this.game.initialize();
-  this.trial=1;
-  return({html:this.options.initialmessage+" "+this.options.restartmessage});
-}
-BG.MaskedRepeatedProcess.prototype.draw=function(){
-  var message="";
-  if (this.trial>this.options.trials_per_session) {
-    message+=this.options.restartmessage+" ";
-    var init=this.game.initialize();
-    this.session+=1;this.trial=1;
-    }
-  message+=this.options.message+" "+this.describeTrial();
-  var d1=this.game.draw();
-  var result={html:message, outcome:d1.outcome};
-  this.trial=this.trial+1;
-  return(result);
-}
-BG.MaskedRepeatedProcess.prototype.describeTrial=function() {
-  return("[Trial "+this.trial+" of "+this.options.trials_per_session+"; Session "+this.session+"]");
-}
-
-BG.QuizProcess=function(options) {
-  var defaults={labels:["False","True"],initial_message:"",
-    title:"Title is Mandatory",
-    questions:[{q:"1+1=2. True?",a:1}] // follow this format to supply questions / answers
-    };
-  options=BG.extendObject(defaults,options);
-  this.options=options;
-  this.labels=options.labels;
-  this.title=options.title;
-  this.questions=options.questions;
-  this.trial=0;
-}
-BG.QuizProcess.prototype.initialize=function(){
-  this.trial=0;
-  return({html:this.options.initial_message})
-  };
-BG.QuizProcess.prototype.draw=function(){
-  if (this.trial < this.questions.length) {
-    var qa=this.questions[this.trial];
-    var result={html: qa.q, outcome:qa.a};
-    this.trial+=1;
-    return(result);
-    }
-  else return{html:"... And we're out of questions. Thanks for playing.",stop:true}
-};
-
-
-BG.show_final_score=function() {
-    BG.logEvent('<span class="hot">Final score:</span> <span class="cool">'+BG.score.toFixed(3)+
-       '</span> after <span class="cool">'+BG.plays+'</span> plays, for an average score per play of <span class="cool">'+
-       (BG.score/BG.plays).toFixed(3)+'</span>.');
-}
-BG.start_game=function(gameix) {
-  if (BG.plays>0 && !BG.stop) {
-    BG.show_final_score();
-    }
-  var game=BG.games[gameix];
-  $("#game_selector")[0].value=gameix;
-  BG.score=0;
-  BG.plays=0;
-  BG.game=game;
-  BG.stop=false;
-  BG.title=game.title;
-  BG.logEvent("");
-  BG.logEvent("<span class='hot'>Starting game: "+BG.title+"</span>");
-  BG.labels=game.labels;
-
-  var init=BG.game.initialize();
-  BG.logEvent(init.html);
-  BG.draw=BG.game.draw();
-  BG.logEvent(BG.draw.html);
-  if (BG.draw.stop===true) {
-     BG.stop=true;
-     }
-  BG.do_refresh();
-};
-
-BG.handle_submit=function(event) {
-  if (BG.stop===true) {
-    alert("This game is finished. Choose a new game from the selector at the top.")
-    }
-  else {
-    var payoff=BG.payoff[BG.draw.outcome];
-    var msg1="You bet as if p="+BG.a.toFixed(3)+" and the outcome was <span class='cool'>"+BG.labels[BG.draw.outcome]+"</span>.";
-    var msg2;
-    if (payoff>=0) msg2="You gained "+payoff.toFixed(3)+" points."
-    else           msg2="You lost "+(-payoff).toFixed(3)+" points."
-    BG.score+=payoff;
-    BG.plays+=1;
-    BG.logEvent("<span style='color:#55F'>"+msg1+" "+msg2+"</span>")
-    BG.draw=BG.game.draw();
-    if (BG.draw.stop===true) {
-       BG.stop=true;
-       }
-    var current_score={score: BG.score, plays: BG.plays, avgscore: BG.score/BG.plays};
-    if (BG.plays===1) { // create a game_scores object for this session
-      if (BG.game_scores[BG.title] === undefined) BG.game_scores[BG.title]=[];
-      BG.game_scores[BG.title]=BG.game_scores[BG.title].concat([current_score]);
-      }
-    else {
-      BG.game_scores[BG.title]=BG.game_scores[BG.title].slice(0,-1).concat([current_score]);
-      }
-    sessionStorage.setItem('game_scores',JSON.stringify(BG.game_scores));
-    BG.logEvent(BG.draw.html);
-    if (BG.stop===true) {
-      BG.show_final_score();
-      BG.logEvent("Choose a new game from the selector at the top.")
-      }
-    }
-  BG.do_refresh();
-}
-
-BG.logEvent=function(h) {
- var l=$("#log")
- l.append(h+"<br>");
- l.scrollTop(l[0].scrollHeight);
-}
-
-BG.setup=function() {
-  var gs=sessionStorage.getItem('game_scores');
-  //sessionStorage.setItem('game_scores','{}') // use this if it gets corrupted
-  //JSON.stringify(BG.game_scores,undefined,2) // use this to see the status
-  if (gs === null) {
-    gs={};
-    sessionStorage.setItem('game_scores',JSON.stringify(gs))
-    } else gs=JSON.parse(gs);
-  BG.game_scores=gs;
-  $("#slider1").change(function(e){BG.do_refresh();})
-  $("#controls_form").submit(function( event ) {
-    BG.handle_submit(event);
-    event.preventDefault();
-    });
-  var selectopts="";
-  for (var gameix in BG.games) {
-    var game=BG.games[gameix];
-    var gt=game.title;
-    selectopts+="<option value='"+gameix+"'>"+gt+"</option>"
-    }
-  $("#game_selector").html(selectopts);
-  $("#game_selector").change(function(e){
-    //console.log(e);console.log(this);
-    var gameix=$("#game_selector")[0].value;
-    BG.start_game(gameix);
-    });
-  // buggy. Weirdness on Firefox.
-  //$("#pbar").mousemove(BG.pbar_mouse);
-  //$("#pbar").mousedown(BG.pbar_mouse);
-}
-
-BG.pbar_mouse=function(e){
-  if (e.which) {$("#slider1")[0].value=e.offsetX;BG.do_refresh();}
-}
-
-BG.plays=0; BG.stop=false;
-BG.quiz1=new BG.QuizProcess({title:"Quiz 1", questions: [
-  {q:"The 2010 US population was more than 325 million persons. True? [Source: 2010 US Census]", a:0},
-  {q:"\"The Little Prince\" was written by A. A. Milne. True? [Source 2014/02 Wikipedia]",a:0},
-  {q:"The city of Malé has an average June temperature in excess of 32.5 degrees celcius. True? [Source: 2014/02 Wikipedia]", a:0},
-  {q:"The population of San Diego city, California is less than 1.5 million persons. True? [Source: 2010 US Census]", a:1},
-  {q:"The character 他 means \"I\" in Mandarin Chinese. True? [Source: Pleco app]", a:0},
-  {q:"Pisan scientist Galileo Galilei was baptized in the octagonal font of the Baptistry. True? [Source: 2012 Lonely Planet]", a:1},
-  {q:"The Swiss Federal consititution recognizes German, French, Italian, and Romansh as the national languages of Switzerland. True? [Source: 2014/02 Wikipedia]", a:1},
-  {q:"Only the male yellow-winged darter dragonfly has large amounts of saffron-yellow colouration on the basal area of each wing. True? [Source: 2014/02 Wikipedia]", a:0},
-  {q:"The 2010 US population was more than 300 million persons. True? [Source: 2010 US Census]", a:1},
-  {q:"I picked a number j at random from 1 to 10, then turned to page 100 of Harry Potter year 5. The j'th word was \"the\". True? [source: my hardback book]", a:0} // It was j=9 and "George" for me.
-  ],
-  initial_message: "Guess the answers to these ten true/false questions."});
-BG.games=[BG.quiz1,
-          new BG.CoinProcess(0.5),
-          new BG.CoinProcess(0.9),
-//          new BG.RandomCoinProcess({}),
-//          new BG.RandomCoinFromEnvelopeProcess({}),
-          new BG.MaskedRepeatedProcess("Coins from Urn Anise",new BG.RandomCoinProcess({}),
-             {initialmessage:"I have a mysterious urn labelled \"Anise\" full of coins, each with possibly different probabilities."}),
-          new BG.MaskedRepeatedProcess("Coins from Urn Basil",new BG.RandomCoinFromEnvelopeProcess({}),
-             {initialmessage:"I have a mysterious urn labelled \"Basil\" full of coins, each with possibly different probabilities."}),
-//          new BG.SimpleMarkovProcess([0.2,.8],1,[1]),
-          new BG.MaskedProcess('Mystery Game Apricot',new BG.CoinProcess(0.621711006318219),{}),
-          new BG.MaskedProcess('Mystery Game Banana',new BG.SimpleMarkovProcess([0.15,.7],1,[0]),{})];
-BG.setup();
-BG.start_game(0);
-
-</script>
 </html>

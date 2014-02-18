@@ -1,0 +1,33 @@
+C.f. http://faculty.engr.utexas.edu/bickel/Papers/QSL_Comparison.pdf
+
+First we want to decide on a payoff function P(a,x) to indicate the loss incurred from action a when outcome x is observed where:
+a \in [0,1], x \in {0,1}
+p=argsup_a p*P(a,1)+(1-p)*P(a,0)
+The meaning of this latter property is that if Pr(X=1)=p is the true probability of "heads" then the choice of a that maximizes the expected payout is a=p.
+One conventional choice is: P(a,x)=log(a)*x+log(1-a)*(1-x), which correponds to the log-likelihood of x under a Bernoulli(a) model (or negate it and call it a loss and talk about entropy and such)
+(For further discussion, see, e.g. http://faculty.engr.utexas.edu/bickel/Papers/QSL_Comparison.pdf)
+The expected payout if p is true is, p*log(a)+(1-p)*log(1-a), and d/da of this is: p/a-(1-p)/(1-a)=(p-a)/(a*(1-a)) (for a \ne 0,1)
+From this and checking the special cases, we confirm that it, or it plus any finite constant, obeys our argsup property.
+[Of course, the same thing would work for multiple choice via multinomial log-likelihood.]
+
+So we can make a Bayes game where there's a certain event about to happen, x=1 or x=0, and we ask the player to move a slider, which moves a via, say, a=logistic(slider scaled to [-5,5]),
+but we just show them that they'll win par+L(a,1) if x=1 happens and par+L(a,0) if x=0 happens and let them choose which payouts they want. In this way we'll obtain their probabilities about x
+and we can check if they're callibrated.
+
+So where to get these "future" X's?
+One way would be to generate them from facts about the world, e.g. did Microsoft stock go up today (x=1) or down (x=0)? 
+  If you asked them about future events and checked them later, it'd be a fair way to score prognosticators (though beware the variance of the score if they're guessing too close to 0,1)
+  The absolute score wouldn't mean too much (sure you could measure it in bits, etc.) but the relative score b/w players is meaningful. I guess you could set a par value by taking
+  the prediction of some consistently available pundit, adjusting their 0/1 prediction to have favorable choices of a_0, a_1, and calling the negative of that score par.
+Or one could take basic quantitative facts, like, y=the population of Europe, and generate questions like, say, "Is the population of Europe within (delta*y) of (gamma*y) or not?" where gamma is a random log-normal with some parameters mu and sigma and delta=0.1.
+Or one could simulate:
+ One could check simulate X randomly, and check if they choose a suitably, when they know the generative model for X.
+ One could simulate X_1, X_2, ... iid Bernoulli(p) (with or without a clue for p) and check that their choices of a converge suitably to p.
+ One could simulate p~F and then conditionally simulate X_1, X_2, ... iid Bernoulli(p) (i.e. simulate the X_i's according to some exchangable process). This generalizes the previous -- they could know more or less about F a priori. (One extreme: F puts mass 1 on 1/3. Another: a point is picked uniformly from the right triangle formed by the coordinate axes and the line y=1-x, the value of this point on the x-axis is the probability p used for all subsequent draws. Another p~Beta(3,8) but don't tell them)
+ One could simulate F from G, some distribution on distributions on [0,1], and (conditionally) simulate p_i's iid from F and (conditionally) simulate X_{i,j} iid Bernoulli(p_i). Then show them various X_{i,j}'s and see how they update all the a_{i,j}'s as they go. You could tell them more or less about G.
+ And on and on... G could be random with hyperparameters, or i could have more structure (e.g. in a lattice or a graph or manifold or ...) and the p_i's could obeys a suitable random process on the space of i's.
+What about time series? E.g. we could make a simulation in which P(X_n=1 | past) depends only on X_{n-1} or maybe on some part of the past plus auxilliary variables Y_{n-1} that they get to observe before they make their guess. One could use a stock market model for this.
+
+Maybe the "right triangle" version of the game, where I don't tell them, but let them play multiple times (i.e. a fresh p each time) and see if they adapt their play style to the truth about F or not.
+Different choices for F could be different levels (i.e. explain the context is different), so they can learn different biases for the different contexts.
+
